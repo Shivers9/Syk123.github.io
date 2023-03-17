@@ -1,1 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>烟花</title>
+    <style>
+        body {
+            overflow: hidden;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        canvas {
+            background-color: #000000;
+        }
+    </style>
+
+</head>
+
+<body>
+    <script>
+        !(function () {
+            // 1. 创建一个 canvas 
+            let canvas = document.createElement("canvas");
+            let context = canvas.getContext("2d");
+            // 2. 添加到 body 中 （同时保证 js 文件在body 标签之后 ）
+            document.body.appendChild(canvas);
+            // 3. 保证 canvas 是铺满整个屏幕的
+            // 为了能够 处理 页面发生改变的时候， 从而保证 canvas 这个元素的大小也发生改变 ， 所以添加事件监听
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                clearCanvas();
+            }
+            window.addEventListener("resize", resizeCanvas);
+            /**
+             * 定义画布的颜色， 并清除内容（本质上是画了一个与画布同样大小的矩形！）
+             */
+            function clearCanvas() {
+                context.fillStyle = "#000000";
+                // 画一个与 canvas 同样大小的一个矩形 
+                context.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            // 第一次页面运行的时候，此时 canvas 的大小是默认大小，那么此时需要调用一下 resizeCanvas 函数
+            resizeCanvas();
+
+            // 4. 获取鼠标点击时候的 中心坐标
+            function mousedownHandler(event) {
+                // 鼠标的水平坐标
+                let x = event.clientX;
+                // 鼠标的垂直坐标
+                let y = event.clientY;
+                createParticle(x, y);
+            }
+            document.addEventListener("mousedown", mousedownHandler);
+
+            // 5. 定义一个数组 ， 进行 存放指定的粒子 
+            let particles = [];
+            // 6. 创建指定的粒子， 并将其填充到数组中
+            function createParticle(x, y) {
+                // 周围的粒子有多少个 
+                let count = 100;
+                // 以 x， y 为中心， 定义的 半径是多少
+                let radius = 10;
+                // 基础的色度值 ( 可以修改 )
+                let hue = Math.floor(Math.random() * 51) + 100;
+                // 基础的变化值
+                let change = 30;
+                for (let i = 0; i < count; i++) {
+                    // 角度的计算
+                    let angle = 360 / count * i;
+                    // 通过角度，计算弧度 
+                    let radian = Math.PI / 180 * angle;
+                    // 通过声明一个对象， 进行存放指定的内容 
+                    let p = {};
+                    //记录中心坐标 相关内容
+                    p.radius = radius;
+                    p.startX = x;
+                    p.startY = y;
+                    // 记录弧度值 
+                    p.radian = radian;
+                    // 色彩的变化 
+                    // 粒子的颜色的处理 
+                    // 度数 : 从 0 到 360 之间的一个数值 , 这里的计算， 可以是不一样的 。
+                    p.hue = Math.floor(Math.random() * (change * 2)) + (hue - change);
+                    // 亮度 : 0 ~ 100 之间的数值；这里的计算，也可以不一样 
+                    p.lightness = Math.floor(Math.random() * 100);
+                    // 透明度  : 0.0 ~ 1.0 
+                    p.alpha = (Math.floor(Math.random() * 101)) / 100;
+                    // 定义一个速度， 随意的一个数值 
+                    p.speed = (Math.random() * 5) + 0.4;
+                    // 此时 ， 速度与半径直接挂钩 
+                    p.radius = p.speed;
+                    particles.push(p);
+                }
+            }
+            // 7、开始画 鼠标周围的圆点
+            function drawParticle() {
+                // 清除之前画布上的内容 
+                clearCanvas();
+                for (let i = 0; i < particles.length; i++) {
+                    let p = particles[i];
+                    // 计算 x 与y 的坐标 
+                    let resultX = Math.cos(p.radian) * p.radius;
+                    let resultY = Math.sin(p.radian) * p.radius + 0.4;
+                    p.startX += resultX;
+                    p.startY += resultY;
+                    // 主要的圆点半径开始 会扩大 ， 则画的粒子也会扩大, 此时声明了速度，那么 半径与速度建立关系即可。 
+                    p.radius *= 1 - p.speed / 100;
+                    // 伴随着半径的扩大， 那么透明度应该是减小的
+                    p.alpha -= 0.005;
+                    // 如果透明度小于等于0 ， 那么就看不到了， 则删除 
+                    if (p.alpha <= 0) {
+                        // 删除元素 
+                        particles.splice(i, 1);
+                        // 此时，就可以不用继续画了！
+                        // 终止本次循环，继续下一次循环
+                        continue;
+                    }
+
+                    // 开始绘制小圆点（ 以鼠标为中心， 周围的原点）
+                    context.beginPath();
+                    context.arc(p.startX, p.startY, 2, 0, 360, false);
+                    context.closePath();
+                    //度数，饱和度，亮度，透明度
+                    context.fillStyle = "hsla( " + p.hue + " , 100% ," + p.lightness + "% , " + p.alpha + ")";
+                    context.fill();
+                }
+            }
+            /**
+             * 实现拖尾效果 
+             */
+            function suffix() {
+                context.globalCompositeOperation = "destination-out";
+                context.fillStyle = "rgba(0 , 0 , 0, " + 0.1 + ")";
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.globalCompositeOperation = "lighter";
+            }
+
+            // 使用定时器， 进行操作
+            function task() {
+                suffix();
+                drawParticle();
+                // 跟浏览器的重绘频率相同 
+                requestAnimationFrame(task);
+            }
+            task();
+
+            // 让烟花自动产生， 使用定时器做
+            // setInterval( fn , timeout ) : 间隔timeout 毫秒之后， 执行 fn 中的内容
+            setInterval(function () {
+                createParticle(Math.random() * canvas.width, Math.random() * canvas.height);
+            }, 1000);
+        })();
+    </script>
+</body>
+
+</html>
